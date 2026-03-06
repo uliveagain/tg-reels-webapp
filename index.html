@@ -15,35 +15,47 @@
         }
         textarea {
             width: 100%;
-            height: 80px;
-            margin-bottom: 15px;
+            height: 60px;
+            margin-bottom: 10px;
             box-sizing: border-box;
             padding: 10px;
             border-radius: 8px;
             border: 1px solid #ccc;
         }
-        /* Визуальный холст с пропорциями TikTok (9:16) */
+        .controls {
+            background: var(--tg-theme-secondary-bg-color, #f4f4f5);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        .slider-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .slider-group input { flex-grow: 1; margin: 0 10px; }
         .canvas-container {
             position: relative;
             width: 100%;
             max-width: 360px;
             aspect-ratio: 9 / 16;
-            background-color: #333; /* Темный фон экрана */
+            background-color: #333;
+            background-position: center;
+            background-repeat: no-repeat;
             margin: 0 auto 15px auto;
             overflow: hidden;
             border-radius: 8px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
-        /* Стили текста (Черный с белой обводкой) */
         #draggableText {
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             color: black;
-            text-shadow:
-                -2px -2px 0 #fff, 2px -2px 0 #fff,
-                -2px 2px 0 #fff, 2px 2px 0 #fff;
-            font-size: 20px;
+            font-size: 50px;
+            -webkit-text-stroke: 3px white; /* Белая обводка */
             font-weight: bold;
             white-space: pre-wrap;
             text-align: center;
@@ -65,7 +77,18 @@
     </style>
 </head>
 <body>
-    <textarea id="textInput" placeholder="Введите текст..."></textarea>
+    <textarea id="textInput" placeholder="Текст для видео..."></textarea>
+
+    <div class="controls">
+        <div class="slider-group">
+            <label>Размер: <span id="sizeVal">50</span></label>
+            <input type="range" id="fontSize" min="20" max="120" value="50">
+        </div>
+        <div class="slider-group">
+            <label>Обводка: <span id="strokeVal">3</span></label>
+            <input type="range" id="strokeWidth" min="0" max="15" value="3">
+        </div>
+    </div>
 
     <div class="canvas-container" id="canvas">
         <div id="draggableText"></div>
@@ -79,17 +102,35 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         const videoId = urlParams.get('video_id');
+        const bgUrl = urlParams.get('bg_url');
 
         const textInput = document.getElementById('textInput');
         const dragText = document.getElementById('draggableText');
         const canvas = document.getElementById('canvas');
 
-        // Моментально обновляем текст на холсте при вводе
-        textInput.addEventListener('input', () => {
-            dragText.innerText = textInput.value;
+        const fontSizeInput = document.getElementById('fontSize');
+        const strokeWidthInput = document.getElementById('strokeWidth');
+
+        // Подгружаем фон, если ссылка передана
+        if(bgUrl && bgUrl !== 'None' && bgUrl !== '') {
+            canvas.style.backgroundImage = `url('${bgUrl}')`;
+            canvas.style.backgroundSize = 'cover';
+        }
+
+        // Обновление стилей на лету
+        textInput.addEventListener('input', () => { dragText.innerText = textInput.value; });
+
+        fontSizeInput.addEventListener('input', (e) => {
+            dragText.style.fontSize = e.target.value + 'px';
+            document.getElementById('sizeVal').innerText = e.target.value;
         });
 
-        // Логика перетаскивания (Поддержка пальцев и мышки)
+        strokeWidthInput.addEventListener('input', (e) => {
+            dragText.style.webkitTextStroke = e.target.value + 'px white';
+            document.getElementById('strokeVal').innerText = e.target.value;
+        });
+
+        // Логика перетаскивания
         let isDragging = false;
         let startX, startY, initialLeft, initialTop;
 
@@ -110,11 +151,8 @@
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-            let newLeft = initialLeft + (clientX - startX);
-            let newTop = initialTop + (clientY - startY);
-
-            dragText.style.left = `${newLeft}px`;
-            dragText.style.top = `${newTop}px`;
+            dragText.style.left = `${initialLeft + (clientX - startX)}px`;
+            dragText.style.top = `${initialTop + (clientY - startY)}px`;
         };
 
         const stopDrag = () => {
@@ -122,26 +160,20 @@
             dragText.style.cursor = 'grab';
         };
 
-        // Слушатели для мыши
         dragText.addEventListener('mousedown', startDrag);
         document.addEventListener('mousemove', drag);
         document.addEventListener('mouseup', stopDrag);
-
-        // Слушатели для сенсорных экранов
         dragText.addEventListener('touchstart', startDrag, {passive: false});
         document.addEventListener('touchmove', drag, {passive: false});
         document.addEventListener('touchend', stopDrag);
 
         function sendData() {
-            // Получаем размеры элементов
             const canvasRect = canvas.getBoundingClientRect();
             const textRect = dragText.getBoundingClientRect();
 
-            // Высчитываем позицию X и Y текста внутри холста
             const relativeX = textRect.left - canvasRect.left;
             const relativeY = textRect.top - canvasRect.top;
 
-            // Вычисляем масштаб для переноса на 1080x1920
             const scaleX = 1080 / canvasRect.width;
             const scaleY = 1920 / canvasRect.height;
 
@@ -152,7 +184,9 @@
                 video_id: videoId,
                 text: textInput.value,
                 x: finalX,
-                y: finalY
+                y: finalY,
+                font_size: parseInt(fontSizeInput.value),
+                stroke_width: parseInt(strokeWidthInput.value)
             };
 
             tg.sendData(JSON.stringify(dataObj));
