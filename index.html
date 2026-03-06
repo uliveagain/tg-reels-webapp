@@ -2,106 +2,157 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Настройки видео</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Визуальный редактор</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--tg-theme-bg-color, #ffffff);
-            color: var(--tg-theme-text-color, #000000);
-            padding: 20px;
+            font-family: sans-serif;
             margin: 0;
-        }
-        h3 {
-            margin-top: 0;
-            text-align: center;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        textarea, input[type="number"] {
-            width: 100%;
             padding: 10px;
-            box-sizing: border-box;
-            border: 1px solid var(--tg-theme-hint-color, #ccc);
-            border-radius: 8px;
-            background-color: var(--tg-theme-secondary-bg-color, #f4f4f5);
-            color: var(--tg-theme-text-color, #000000);
-            font-size: 16px;
+            background: var(--tg-theme-bg-color, #fff);
+            color: var(--tg-theme-text-color, #000);
         }
         textarea {
-            resize: vertical;
-            height: 100px;
+            width: 100%;
+            height: 80px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
         }
-        .coord-container {
-            display: flex;
-            gap: 10px;
+        /* Визуальный холст с пропорциями TikTok (9:16) */
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            max-width: 360px;
+            aspect-ratio: 9 / 16;
+            background-color: #333; /* Темный фон экрана */
+            margin: 0 auto 15px auto;
+            overflow: hidden;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        /* Стили текста (Черный с белой обводкой) */
+        #draggableText {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: black;
+            text-shadow:
+                -2px -2px 0 #fff, 2px -2px 0 #fff,
+                -2px 2px 0 #fff, 2px 2px 0 #fff;
+            font-size: 20px;
+            font-weight: bold;
+            white-space: pre-wrap;
+            text-align: center;
+            cursor: grab;
+            user-select: none;
+            padding: 5px;
+            line-height: 1.2;
         }
         button {
             width: 100%;
-            padding: 12px;
-            background-color: var(--tg-theme-button-color, #3390ec);
-            color: var(--tg-theme-button-text-color, #ffffff);
+            padding: 15px;
+            background: var(--tg-theme-button-color, #0088cc);
+            color: var(--tg-theme-button-text-color, #fff);
             border: none;
             border-radius: 8px;
             font-size: 16px;
             font-weight: bold;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        .hint {
-            font-size: 12px;
-            color: var(--tg-theme-hint-color, #999);
-            margin-top: 5px;
         }
     </style>
 </head>
 <body>
+    <textarea id="textInput" placeholder="Введите текст..."></textarea>
 
-    <h3>Разметка текста</h3>
-
-    <div class="form-group">
-        <label for="videoText">Текст (можно в несколько строк):</label>
-        <textarea id="videoText" placeholder="Введите текст..."></textarea>
+    <div class="canvas-container" id="canvas">
+        <div id="draggableText"></div>
     </div>
 
-    <div class="form-group coord-container">
-        <div style="flex: 1;">
-            <label for="coordX">Ось X (вправо):</label>
-            <input type="number" id="coordX" value="100">
-        </div>
-        <div style="flex: 1;">
-            <label for="coordY">Ось Y (вниз):</label>
-            <input type="number" id="coordY" value="300">
-        </div>
-    </div>
-    <div class="hint">Для видео 1080x1920. X: 0-1080, Y: 0-1920. Центр: X=540, Y=960.</div>
-
-    <button onclick="sendData()">Отправить в обработку</button>
+    <button onclick="sendData()">Отправить в рендер</button>
 
     <script>
         let tg = window.Telegram.WebApp;
-        tg.expand(); 
+        tg.expand();
 
         const urlParams = new URLSearchParams(window.location.search);
         const videoId = urlParams.get('video_id');
 
+        const textInput = document.getElementById('textInput');
+        const dragText = document.getElementById('draggableText');
+        const canvas = document.getElementById('canvas');
+
+        // Моментально обновляем текст на холсте при вводе
+        textInput.addEventListener('input', () => {
+            dragText.innerText = textInput.value;
+        });
+
+        // Логика перетаскивания (Поддержка пальцев и мышки)
+        let isDragging = false;
+        let startX, startY, initialLeft, initialTop;
+
+        const startDrag = (e) => {
+            isDragging = true;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            startX = clientX;
+            startY = clientY;
+            initialLeft = dragText.offsetLeft;
+            initialTop = dragText.offsetTop;
+            dragText.style.cursor = 'grabbing';
+        };
+
+        const drag = (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            let newLeft = initialLeft + (clientX - startX);
+            let newTop = initialTop + (clientY - startY);
+
+            dragText.style.left = `${newLeft}px`;
+            dragText.style.top = `${newTop}px`;
+        };
+
+        const stopDrag = () => {
+            isDragging = false;
+            dragText.style.cursor = 'grab';
+        };
+
+        // Слушатели для мыши
+        dragText.addEventListener('mousedown', startDrag);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', stopDrag);
+
+        // Слушатели для сенсорных экранов
+        dragText.addEventListener('touchstart', startDrag, {passive: false});
+        document.addEventListener('touchmove', drag, {passive: false});
+        document.addEventListener('touchend', stopDrag);
+
         function sendData() {
-            const textValue = document.getElementById('videoText').value;
-            const xValue = parseInt(document.getElementById('coordX').value) || 0;
-            const yValue = parseInt(document.getElementById('coordY').value) || 0;
+            // Получаем размеры элементов
+            const canvasRect = canvas.getBoundingClientRect();
+            const textRect = dragText.getBoundingClientRect();
+
+            // Высчитываем позицию X и Y текста внутри холста
+            const relativeX = textRect.left - canvasRect.left;
+            const relativeY = textRect.top - canvasRect.top;
+
+            // Вычисляем масштаб для переноса на 1080x1920
+            const scaleX = 1080 / canvasRect.width;
+            const scaleY = 1920 / canvasRect.height;
+
+            const finalX = Math.round(relativeX * scaleX);
+            const finalY = Math.round(relativeY * scaleY);
 
             const dataObj = {
                 video_id: videoId,
-                text: textValue,
-                x: xValue,
-                y: yValue
+                text: textInput.value,
+                x: finalX,
+                y: finalY
             };
 
             tg.sendData(JSON.stringify(dataObj));
