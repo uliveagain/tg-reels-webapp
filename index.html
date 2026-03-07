@@ -46,7 +46,7 @@
             background-size: cover;
             background-repeat: no-repeat;
             margin: 0 auto 15px auto;
-            overflow: hidden;
+            overflow: hidden; /* Скрывает то, что сильно вылезает за рамки визуально, но координаты считаются верно */
             border-radius: 8px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
@@ -57,8 +57,10 @@
             color: black;
             font-size: 50px;
             font-weight: bold;
-            white-space: pre-wrap;
-            /* Изменили выравнивание на левый край */
+
+            /* МАГИЯ ЗДЕСЬ: pre запрещает автоперенос, разрешает только ручной через Enter */
+            white-space: pre;
+
             text-align: left;
             cursor: grab;
             user-select: none;
