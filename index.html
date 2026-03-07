@@ -46,7 +46,7 @@
             background-size: cover;
             background-repeat: no-repeat;
             margin: 0 auto 15px auto;
-            overflow: hidden; /* Скрывает то, что сильно вылезает за рамки визуально, но координаты считаются верно */
+            overflow: hidden;
             border-radius: 8px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
@@ -57,15 +57,12 @@
             color: black;
             font-size: 50px;
             font-weight: bold;
-
-            /* МАГИЯ ЗДЕСЬ: pre запрещает автоперенос, разрешает только ручной через Enter */
             white-space: pre;
-
             text-align: left;
             cursor: grab;
             user-select: none;
-            padding: 5px;
             line-height: 1.2;
+            /* Убрали padding, чтобы рамка текста считалась математически точно */
         }
         button {
             width: 100%;
@@ -195,13 +192,17 @@
             const finalX = Math.round(relativeX * scaleX);
             const finalY = Math.round(relativeY * scaleY);
 
+            // ИСПРАВЛЕНИЕ: Масштабируем размер шрифта и обводки под видео 1080px
+            const finalFontSize = Math.round(parseInt(fontSizeInput.value) * scaleX);
+            const finalStroke = Math.round(parseInt(strokeWidthInput.value) * scaleX);
+
             const dataObj = {
                 video_id: videoId,
                 text: textInput.value,
                 x: finalX,
                 y: finalY,
-                font_size: parseInt(fontSizeInput.value),
-                stroke_width: parseInt(strokeWidthInput.value)
+                font_size: finalFontSize,
+                stroke_width: finalStroke
             };
 
             tg.sendData(JSON.stringify(dataObj));
