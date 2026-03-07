@@ -43,6 +43,7 @@
             aspect-ratio: 9 / 16;
             background-color: #333;
             background-position: center;
+            background-size: cover; /* Важно для правильного отображения фона */
             background-repeat: no-repeat;
             margin: 0 auto 15px auto;
             overflow: hidden;
@@ -55,7 +56,6 @@
             transform: translate(-50%, -50%);
             color: black;
             font-size: 50px;
-            -webkit-text-stroke: 3px white; /* Белая обводка */
             font-weight: bold;
             white-space: pre-wrap;
             text-align: center;
@@ -63,6 +63,7 @@
             user-select: none;
             padding: 5px;
             line-height: 1.2;
+            /* Внутренняя обводка удалена, теперь управляется через JS */
         }
         button {
             width: 100%;
@@ -107,17 +108,34 @@
         const textInput = document.getElementById('textInput');
         const dragText = document.getElementById('draggableText');
         const canvas = document.getElementById('canvas');
-
         const fontSizeInput = document.getElementById('fontSize');
         const strokeWidthInput = document.getElementById('strokeWidth');
 
-        // Подгружаем фон, если ссылка передана
+        // Подгружаем фон
         if(bgUrl && bgUrl !== 'None' && bgUrl !== '') {
             canvas.style.backgroundImage = `url('${bgUrl}')`;
-            canvas.style.backgroundSize = 'cover';
         }
 
-        // Обновление стилей на лету
+        // --- ГЕНЕРАТОР ВНЕШНЕЙ ОБВОДКИ ---
+        function applyStroke(width) {
+            if (width == 0) {
+                dragText.style.textShadow = "none";
+                return;
+            }
+            let shadow = [];
+            // Создаем круговую тень для имитации внешней обводки
+            for (let angle = 0; angle < 360; angle += 15) {
+                let rad = angle * Math.PI / 180;
+                let x = (Math.cos(rad) * width).toFixed(1);
+                let y = (Math.sin(rad) * width).toFixed(1);
+                shadow.push(`${x}px ${y}px 0 white`);
+            }
+            dragText.style.textShadow = shadow.join(', ');
+        }
+
+        // Инициализация при старте
+        applyStroke(strokeWidthInput.value);
+
         textInput.addEventListener('input', () => { dragText.innerText = textInput.value; });
 
         fontSizeInput.addEventListener('input', (e) => {
@@ -126,7 +144,7 @@
         });
 
         strokeWidthInput.addEventListener('input', (e) => {
-            dragText.style.webkitTextStroke = e.target.value + 'px white';
+            applyStroke(e.target.value);
             document.getElementById('strokeVal').innerText = e.target.value;
         });
 
