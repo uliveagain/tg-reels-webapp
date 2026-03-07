@@ -43,7 +43,7 @@
             aspect-ratio: 9 / 16;
             background-color: #333;
             background-position: center;
-            background-size: cover; /* Важно для правильного отображения фона */
+            background-size: cover;
             background-repeat: no-repeat;
             margin: 0 auto 15px auto;
             overflow: hidden;
@@ -58,12 +58,12 @@
             font-size: 50px;
             font-weight: bold;
             white-space: pre-wrap;
-            text-align: center;
+            /* Изменили выравнивание на левый край */
+            text-align: left;
             cursor: grab;
             user-select: none;
             padding: 5px;
             line-height: 1.2;
-            /* Внутренняя обводка удалена, теперь управляется через JS */
         }
         button {
             width: 100%;
@@ -111,19 +111,16 @@
         const fontSizeInput = document.getElementById('fontSize');
         const strokeWidthInput = document.getElementById('strokeWidth');
 
-        // Подгружаем фон
         if(bgUrl && bgUrl !== 'None' && bgUrl !== '') {
             canvas.style.backgroundImage = `url('${bgUrl}')`;
         }
 
-        // --- ГЕНЕРАТОР ВНЕШНЕЙ ОБВОДКИ ---
         function applyStroke(width) {
             if (width == 0) {
                 dragText.style.textShadow = "none";
                 return;
             }
             let shadow = [];
-            // Создаем круговую тень для имитации внешней обводки
             for (let angle = 0; angle < 360; angle += 15) {
                 let rad = angle * Math.PI / 180;
                 let x = (Math.cos(rad) * width).toFixed(1);
@@ -133,7 +130,6 @@
             dragText.style.textShadow = shadow.join(', ');
         }
 
-        // Инициализация при старте
         applyStroke(strokeWidthInput.value);
 
         textInput.addEventListener('input', () => { dragText.innerText = textInput.value; });
@@ -148,7 +144,6 @@
             document.getElementById('strokeVal').innerText = e.target.value;
         });
 
-        // Логика перетаскивания
         let isDragging = false;
         let startX, startY, initialLeft, initialTop;
 
